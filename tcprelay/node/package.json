@@ -1,0 +1,15 @@
+{
+  "name": "pnp-recipes",
+  "version": "1.0.0",
+  "description": "practical network programming recipes",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/skyitachi/pnp.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/skyitachi/pnp/issues"
+  },
+  "homepage": "https://github.com/skyitachi/pnp#readme"
+}

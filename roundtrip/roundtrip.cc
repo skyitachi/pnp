@@ -10,8 +10,9 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <errno.h>
 #include <sys/time.h>
+#include <thread>
+#include <zconf.h>
 
 struct Message {
     int64_t request;
@@ -27,55 +28,75 @@ int64_t now() {
 void start_server(const struct sockaddr* servaddr) {
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     bind(sockfd, servaddr, sizeof(struct sockaddr));
-    listen(sockfd, 1);
+    // Note: UDP does not need listen
+//    listen(sockfd, 1);
     struct sockaddr_in src_addr;
     socklen_t sock_len = sizeof(struct sockaddr);
     for(;;) {
         struct Message msg = {0, 0};
         const int msgLen = sizeof(Message);
         ssize_t cnt = recvfrom(sockfd, &msg, msgLen, 0, (struct sockaddr *)&src_addr, &sock_len);
-        if (cnt != msgLen) {
-            fprintf(stderr, "server read message error\n");
+        if (cnt < 0) {
+            perror("server recv error");
+        } else if (cnt != msgLen) {
+            fprintf(stderr, "server read %zd bytes message expect %d bytes data\n", cnt, msgLen);
             exit(1);
         }
         printf("server receive request is %lld\n", msg.request);
 
         msg.response = now();
-        sendto(sockfd, &msg, msgLen, 0, (struct sockaddr *)&src_addr, sock_len);
+        ssize_t nw = sendto(sockfd, &msg, msgLen, 0, (struct sockaddr *)&src_addr, sock_len);
+        if (nw < 0) {
+            perror("server udp send error");
+        } else if (nw != msgLen) {
+            fprintf(stderr, "server send %zd bytes data expects %d bytes data\n", nw, msgLen);
+        }
         printf("server send response is %lld\n", msg.response);
     }
 }
 
 void run_client(const struct sockaddr* servaddr) {
-    int msgLen = sizeof(Message);
     // UDP
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    // no need connect??
     // UDP is connectionless protocol
 //    if ((connect(sockfd, servaddr, sizeof(struct sockaddr))) < 0) {
 //        fprintf(stderr, "connect server error: %s\n", strerror(errno));
 //        exit(1);
 //    }
-    struct Message msg = {0, 0};
-    msg.request = now();
-    // send
-    if (sendto(sockfd, &msg, sizeof(msg), 0, servaddr, sizeof(struct sockaddr)) < 0) {
-        fprintf(stderr, "client write error: %s\n", strerror(errno));
-        exit(1);
-    }
-    printf("client send request: %lld\n", msg.request);
+    // send, maybe block
+    std::thread thr([&sockfd, &servaddr] () {
+        int msgLen = sizeof(Message);
+        while(true) {
+            struct Message msg = {0, 0};
+            msg.request = now();
+            ssize_t nw = sendto(sockfd, &msg, msgLen, 0, servaddr, sizeof(struct sockaddr));
+            if (nw < 0) {
+                perror("client send error");
+            } else if (nw != msgLen) {
+                fprintf(stderr, "client send %zd bytes data expect %d bytes data\n", nw, msgLen);
+            }
+//            printf("client send request: %lld\n", msg.request);
+            usleep(1000 * 500); // 500ms
+        }
+    });
 
     // no need to get src_addr
 //    struct sockaddr_in src_addr;
 //    socklen_t src_addr_len;
 //    int cnt = recvfrom(sockfd, &msg, sizeof(msg), 0, (struct sockaddr *)&src_addr, &src_addr_len);
-    int cnt = recvfrom(sockfd, &msg, sizeof(msg), 0, NULL, NULL);
-    if (cnt != msgLen) {
-        perror("client read error\n");
+    while(true) {
+        struct Message msg = {0, 0};
+        int msgLen = sizeof(Message);
+        ssize_t cnt = recvfrom(sockfd, &msg, sizeof(msg), 0, NULL, NULL);
+        if (cnt < 0) {
+            perror("client recv error");
+        } else if (cnt != msgLen) {
+            fprintf(stderr, "client receive %zd bytes data expect %d bytes data\n", cnt, msgLen);
+        }
+        int64_t c = now();
+        int64_t offset = (c + msg.request)/ 2 - msg.response;
+        printf("client and server offset is %lld usec\n", offset);
     }
-    int64_t c = now();
-    int64_t offset = (c + msg.request)/ 2 - msg.response;
-    printf("client and server offset is %lld usec\n", offset);
 }
 
 
@@ -92,14 +113,22 @@ void set_addr(const char *hostname, struct in_addr *sin_addr) {
 
 
 int main(int argc, char **argv) {
+    if (argc < 2) {
+        printf("Usage:\nServer: %s -s\nClient %s host\n", argv[0], argv[0]);
+        exit(1);
+    }
     struct sockaddr_in servaddr;
-    const char* host = "localhost";
+    // boilerplate, bzero
+    bzero(&servaddr, sizeof(servaddr));
+
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(10001);
-    set_addr(host, &servaddr.sin_addr);
-    if (argc > 1) { // client
+    if (strcmp(argv[1], "-s") != 0) { // client
+        set_addr(argv[1], &servaddr.sin_addr);
         run_client((const struct sockaddr*)&servaddr);
     } else { // server
+        const char* host = "localhost";
+        set_addr(host, &servaddr.sin_addr);
         start_server((const struct sockaddr *)&servaddr);
     }
     return 0;

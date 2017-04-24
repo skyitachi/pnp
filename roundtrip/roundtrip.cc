@@ -26,7 +26,7 @@ int64_t now() {
 }
 
 void start_server(const struct sockaddr* servaddr) {
-    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     bind(sockfd, servaddr, sizeof(struct sockaddr));
     // Note: UDP does not need listen
 //    listen(sockfd, 1);
@@ -57,7 +57,8 @@ void start_server(const struct sockaddr* servaddr) {
 
 void run_client(const struct sockaddr* servaddr) {
     // UDP
-    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+
     // UDP is connectionless protocol
 //    if ((connect(sockfd, servaddr, sizeof(struct sockaddr))) < 0) {
 //        fprintf(stderr, "connect server error: %s\n", strerror(errno));

@@ -18,21 +18,37 @@
 #include <pthread.h>
 #include <ctype.h>
 
-struct thread_info {
-    int connfd;
-};
-void *thr_fn(void *arg) {
-    struct thread_info *info = (struct thread_info *)arg;
-    printf("in the thread, connect fd is %d\n", info->connfd);
-    return ((void *) 0);
-}
-int main() {
-    pthread_t ntid;
-    struct thread_info *tinfo;
-    tinfo = (struct thread_info *)malloc(sizeof(struct thread_info));
-    int err;
-    tinfo->connfd = 100;
-    err = pthread_create(&ntid, NULL, thr_fn, tinfo);
-    printf("in the main thread\n");
+#define COUNT 65536
+
+int main(int argc, char **argv) {
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s port\n", argv[0]);
+        exit(1);
+    }
+    int port = atoi(argv[1]);
+    struct sockaddr_in servaddr, srvaddr, peeraddr;
+    bzero(&servaddr, sizeof(servaddr));
+    bzero(&srvaddr, sizeof(srvaddr));
+    bzero(&peeraddr, sizeof(peeraddr));
+    socklen_t srv_len, peer_len;
+    servaddr.sin_port = htons(port);
+    servaddr.sin_family = AF_INET;
+    inet_aton("127.0.0.1", &(servaddr.sin_addr));
+
+    for(int i = 0; i < COUNT; i++) {
+        int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+        int ret = connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
+        if (ret == 0) {
+            printf("in the success branch\n");
+            getsockname(sockfd, (struct sockaddr *)&srvaddr, &srv_len);
+            getpeername(sockfd, (struct sockaddr *)&peeraddr, &peer_len);
+            printf("self connect success\n");
+            break;
+        } else if (errno != ECONNREFUSED) {
+            printf("connect error: %s", strerror(errno));
+            break;
+        }
+        usleep(5000); // 5ms
+    }
     return 0;
 }

@@ -2,5 +2,6 @@
 **/cmake-build-debug
 **/node_modules
 **/*.log
-ttcp/ttcp
-roundtrip/roundtrip
+ttcp/cpp/ttcp
+roundtrip/cpp/roundtrip
+ttcp/cpp/self_connect

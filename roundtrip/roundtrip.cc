@@ -128,8 +128,7 @@ int main(int argc, char **argv) {
         set_addr(argv[1], &servaddr.sin_addr);
         run_client((const struct sockaddr*)&servaddr);
     } else { // server
-        const char* host = "localhost";
-        set_addr(host, &servaddr.sin_addr);
+        servaddr.sin_addr.s_addr = INADDR_ANY;
         start_server((const struct sockaddr *)&servaddr);
     }
     return 0;

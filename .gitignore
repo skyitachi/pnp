@@ -3,5 +3,5 @@
 **/node_modules
 **/*.log
 ttcp/cpp/ttcp
-roundtrip/cpp/roundtrip
-ttcp/cpp/self_connect
+./roundtrip/cpp/roundtrip
+./ttcp/cpp/self_connect

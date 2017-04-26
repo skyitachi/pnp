@@ -42,16 +42,16 @@ void start_server(const struct sockaddr* servaddr) {
             fprintf(stderr, "server read %zd bytes message expect %d bytes data\n", cnt, msgLen);
             exit(1);
         }
-        printf("server receive request is %lld\n", msg.request);
+        printf("server receive request is %lld\n", ntohll(msg.request));
 
-        msg.response = now();
+        msg.response = htonll(now());
         ssize_t nw = sendto(sockfd, &msg, msgLen, 0, (struct sockaddr *)&src_addr, sock_len);
         if (nw < 0) {
             perror("server udp send error");
         } else if (nw != msgLen) {
             fprintf(stderr, "server send %zd bytes data expects %d bytes data\n", nw, msgLen);
         }
-        printf("server send response is %lld\n", msg.response);
+        printf("server send response is %lld\n", ntohll(msg.response));
     }
 }
 
@@ -69,7 +69,7 @@ void run_client(const struct sockaddr* servaddr) {
         int msgLen = sizeof(Message);
         while(true) {
             struct Message msg = {0, 0};
-            msg.request = now();
+            msg.request = htonll(now());
             ssize_t nw = sendto(sockfd, &msg, msgLen, 0, servaddr, sizeof(struct sockaddr));
             if (nw < 0) {
                 perror("client send error");
@@ -95,7 +95,7 @@ void run_client(const struct sockaddr* servaddr) {
             fprintf(stderr, "client receive %zd bytes data expect %d bytes data\n", cnt, msgLen);
         }
         int64_t c = now();
-        int64_t offset = (c + msg.request)/ 2 - msg.response;
+        int64_t offset = (c + ntohll(msg.request))/ 2 - ntohll(msg.response);
         printf("client and server offset is %lld usec\n", offset);
     }
 }

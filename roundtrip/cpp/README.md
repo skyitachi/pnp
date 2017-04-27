@@ -15,3 +15,6 @@ client and server offset is -40 usec
 ```
 ### explain
 `offset = (T1 + T3) / 2 - T2 / 2`, 由于从server端接受到数据到发出去数据需要从内核态切换到用户态（recv)再切换回内核态(send)需要时间，这个时间大致就是offset
+
+### claims
+- do not deal with byte order

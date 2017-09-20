@@ -5,3 +5,4 @@
 ./ttcp/cpp/ttcp
 ./roundtrip/cpp/roundtrip
 ./ttcp/cpp/self_connect
+**/.idea

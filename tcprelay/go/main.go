@@ -6,23 +6,63 @@ import (
   "log"
 )
 var buf = make([]byte, 4096)
+var buf2 = make([]byte, 4096)
 
 func handleConnection(conn net.Conn, dstConn net.Conn) {
-  for {
-    n, err := conn.Read(buf)
-    if err != nil {
-      log.Fatal(err)
-    }
-    if n > 0 {
-      log.Printf("relay server get %d bytes data", n)
-      nw, err := dstConn.Write(buf[:n])
+  ch1 := make(chan int)
+  ch2 := make(chan int)
+  go func(ch chan int) {
+    for {
+      n, err := dstConn.Read(buf2)
       if err != nil {
+        ch <- 1
         log.Fatal(err)
       }
-      log.Printf("relay server send %d bytes data", nw)
+      if n > 0 {
+        log.Printf("relay server get %d bytes data", n)
+        nw, err := conn.Write(buf2[:n])
+        if err != nil {
+          ch <- 1
+          log.Fatal(err)
+        }
+        log.Printf("relay server send %d bytes data", nw)
+      }
+    }
+  }(ch1)
+  go func(ch chan int) {
+    for {
+      n, err := conn.Read(buf)
+      if err != nil {
+        ch <- 1
+        log.Fatal(err)
+      }
+      if n > 0 {
+        log.Printf("relay server get %d bytes data", n)
+        nw, err := dstConn.Write(buf[:n])
+        if err != nil {
+          ch <- 1
+          log.Fatal(err)
+        }
+        log.Printf("relay server send %d bytes data", nw)
+      }
+    }
+    log.Printf("connection stop reads")
+  }(ch2)
+  count := 0
+  for {
+    select {
+    case <- ch1:
+      count += 1
+      if count == 2 {
+        return
+      }
+    case <- ch2:
+      count += 1
+      if count == 2 {
+        return
+      }
     }
   }
-  log.Printf("connection stop reads")
 }
 
 // 单向relay

@@ -85,13 +85,14 @@ func startServerListening(listener net.Listener, dstConn net.Conn) {
 func relay(conn net.Conn, cPort string) {
   log.Printf("client address: %s has connected", conn.RemoteAddr().String())
   defer conn.Close()
-  dstConn, err := net.Dial("tcp", ":" + cPort)
+  dstConn, err := net.Dial("tcp", "localhost:" + cPort)
   defer dstConn.Close()
   panicOnError(err)
   done := make(chan bool)
   go func() {
     io.Copy(conn, dstConn)
     tcpConn := conn.(*net.TCPConn)
+    log.Printf("dstConn no more data to read\n")
     tcpConn.CloseWrite()
     done <- true
   }()
@@ -107,7 +108,7 @@ func main() {
     log.Fatal("usage: go run main.go [serverport] [clientport]")
   }
   sPort, cPort := os.Args[1], os.Args[2]
-  ln, err := net.Listen("tcp", ":" + sPort)
+  ln, err := net.Listen("tcp", "localhost:" + sPort)
   panicOnError(err)
   defer ln.Close()
   for {

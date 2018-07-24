@@ -7,3 +7,4 @@ cmake-build-debug
 ./roundtrip/cpp/roundtrip
 ./ttcp/cpp/self_connect
 **/.idea
+.vscode
